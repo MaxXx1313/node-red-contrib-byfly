@@ -1,0 +1,67 @@
+<script type="text/javascript">
+    RED.nodes.registerType('byfly-balance',{
+        category: 'custom',
+        color: '#C0DEED',
+        defaults: {
+            name: {value:""},
+            username: {value:"", required :true},
+            password: {value:"", required :true}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "byfly-32x32.png",
+        label: function() {
+            return this.name || "byfly-balance";
+        },
+        credentials: {
+            username: {type:"text"},
+            password: {type:"password"}
+        },
+    });
+</script>
+
+<script type="text/html" data-template-name="byfly-balance">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-username"><i class="icon-tag"></i> Username</label>
+        <input type="text" id="node-input-username">
+    </div>
+    <div class="form-row">
+        <label for="node-input-password"><i class="icon-tag"></i> Password</label>
+        <input type="password" id="node-input-password">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="byfly-balance">
+    <p>Node that fetch balance of ByFly account</p>
+
+    <p>When input message is received, the request is performed. Actual message data is not used.</p>
+    
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload
+            <span class="property-type">any</span>
+        </dt>
+        <dd>payload is not used</dd>
+    </dl>
+
+
+    <h3>Outputs</h3>
+    <ol class="node-ports">
+        <li>Standard output
+            <dl class="message-properties">
+                <dt>payload <span class="property-type">float</span></dt>
+                <dd>Account balance</dd>
+            </dl>
+            <dl class="message-properties">
+                <dt>raw <span class="property-type">object</span></dt>
+                <dd>The original answer from the server</dd>
+            </dl>
+        </li>
+    </ol>
+
+
+</script>
