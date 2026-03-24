@@ -1,45 +1,312 @@
 <script type="text/javascript">
-    RED.nodes.registerType('byfly-balance',{
+    RED.nodes.registerType('byfly-balance', {
         category: 'custom',
         color: '#C0DEED',
         defaults: {
-            name: {value:""},
-            username: {value:"", required :true},
-            password: {value:"", required :true}
+            name: {value: ""},
+            username: {value: "", required: false},
+            password: {value: "", required: false},
+            token: {value: "", required: true}
         },
-        inputs:1,
-        outputs:1,
+        inputs: 1,
+        outputs: 1,
         icon: "byfly-32x32.png",
-        label: function() {
+        label: function () {
             return this.name || "byfly-balance";
         },
         credentials: {
-            username: {type:"text"},
-            password: {type:"password"}
+            username: {type: "text"},
+            password: {type: "text"},
+            code: {type: "text"},
+            token: {type: "password"}
         },
+        oneditprepare: function () {
+            const node = this;
+
+            window._byfly_node = this; // for debugging
+
+            if (node.credentials.has_token) {
+                _byfly_update_form_state('code-accepted');
+            } else {
+                _byfly_update_form_state('none');
+            }
+
+            // Attach logic to button
+            $("#byfly_request_code").on("click", function () {
+                const username = $("#node-input-username").val();
+                const password = $("#node-input-password").val();
+
+                if (!username) {
+                    RED.notify("Please enter a phone", "error");
+                    return;
+                }
+                if (!username.match(/^\d{12}$/)) {
+                    RED.notify("Please check phone format", "error");
+                    return;
+                }
+                if (!password) {
+                    RED.notify("Please enter a password", "error");
+                    return;
+                }
+
+                // Call a backend endpoint 
+                _byfly_update_form_state('code-requesting');
+                _byfly_request_code(username, password, function (err, token) {
+                    if (err) {
+                        RED.notify("Failed: " + err, "error");
+                        _byfly_update_form_state('none');
+                    } else {
+                        RED.notify("SMS code requested!", "success");
+                        _byfly_update_form_state('code-requested');
+                    }
+                });
+            });
+
+            $("#byfly_submit_code").on("click", function () {
+                const username = $("#node-input-username").val();
+                const password = $("#node-input-password").val();
+                const code = $("#node-input-code").val();
+
+                if (!username) {
+                    RED.notify("Please enter a phone", "error");
+                    return;
+                }
+                if (!password) {
+                    RED.notify("Please enter a password", "error");
+                    return;
+                }
+                if (!code) {
+                    RED.notify("Please enter a code", "error");
+                    return;
+                }
+
+                // Call a backend endpoint 
+                _byfly_update_form_state('code-submitted');
+                _byfly_submit_code(username, password, code, function (err, token) {
+                    if (err) {
+                        RED.notify("Failed: " + err, "error");
+                        _byfly_update_form_state('code-requested');
+                    } else {
+                        node.credentials.token = token.access_token;
+                        $("#node-input-token").val(token.access_token);
+                        RED.notify("Code accepted!", "success");
+                        _byfly_update_form_state('code-accepted');
+                    }
+
+                });
+            });
+
+            $("#byfly_reset").on("click", function () {
+                // Create the confirmation notification
+                const myNotification = RED.notify("This will reset current token. Are you sure?", {
+                    modal: true,
+                    fixed: true,
+                    type: "warning", // Adds the orange 'warning' icon/color
+                    buttons: [
+                        {
+                            text: "Cancel",
+                            click: function (e) {
+                                myNotification.close();
+                            }
+                        },
+                        {
+                            text: "OK",
+                            class: "primary", // Makes the button blue
+                            click: function (e) {
+                                myNotification.close();
+
+                                node.credentials.token = '';
+                                node.credentials.has_token = false;
+                                $('#node-input-token').val('');
+                                _byfly_update_form_state('none');
+                            }
+                        }
+                    ]
+                });
+            });
+        }
     });
+
+    function $_set_disabled(selector, isDisabled) {
+        let el = $(selector);
+        if (isDisabled) {
+            el.prop('disabled', true).addClass('ui-state-disabled');
+        } else {
+            el.prop('disabled', false).removeClass('ui-state-disabled');
+        }
+        return el;
+    }
+
+    function _byfly_update_form_state(state) {
+        $_set_disabled("#node-input-username", false);
+        $_set_disabled("#node-input-password", false);
+        $_set_disabled("#byfly_request_code", false);
+
+        $_set_disabled("#node-input-code", false);
+        $_set_disabled("#byfly_submit_code", false);
+
+        $('#byfly_request_code_progress').hide();
+        $('#byfly_submit_code_progress').hide();
+
+        switch (state) {
+            case 'code-requesting':
+                $_set_disabled("#node-input-username", true);
+                $_set_disabled("#node-input-password", true);
+                $_set_disabled("#byfly_request_code", true);
+                $('#byfly_request_code_progress').show();
+                break;
+            case 'code-requested':
+                $_set_disabled("#node-input-username", true);
+                $_set_disabled("#node-input-password", true);
+                break;
+            case 'code-submitted':
+                $_set_disabled("#node-input-username", true);
+                $_set_disabled("#node-input-password", true);
+                $_set_disabled("#byfly_request_code", true);
+
+                $_set_disabled("#node-input-code", true);
+                $_set_disabled("#byfly_submit_code", true);
+                $('#byfly_submit_code_progress').show();
+                break;
+            case 'code-accepted':
+                $_set_disabled("#node-input-username", true);
+                $_set_disabled("#node-input-password", true);
+                $_set_disabled("#byfly_request_code", true);
+
+                $_set_disabled("#node-input-code", true);
+                $_set_disabled("#byfly_submit_code", true);
+                break;
+            case 'none':
+            default:
+                break;
+        }
+
+    }
+
+    function _byfly_request_code(username, password, cb) {
+        $.ajax({
+            url: "https://myapi.beltelecom.by/api/v2/oauth/token",
+            type: "POST",
+
+            //url: "https://api.restful-api.dev/objects",
+            //type: "GET",
+
+            data: {username: username, password: password},
+            success: function (response) {
+                console.log('_byfly_request_code success', response);
+                cb();
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error('_byfly_request_code error', jqXHR, textStatus, errorThrown);
+                cb(_byfly_parse_error(jqXHR));
+            }
+        });
+    }
+
+
+    function _byfly_submit_code(username, password, code, cb) {
+
+        $.ajax({
+            url: "https://myapi.beltelecom.by/api/v2/oauth/token",
+            type: "POST",
+
+            //url: "https://api.restful-api.dev/collections/sample/objects",
+            //url: "https://api.restful-api.dev/objects",
+            //type: "GET",
+            data: {username: username, password: password, code: code},
+            success: function (resp) {
+                console.log('_byfly_submit_code success', resp);
+                if (resp.access_token) {
+                    cb(null, resp);
+                } else {
+                    console.error('_byfly_submit_code response error', resp);
+                    cb("Incorrect response received (probably need to updated the plugin)");
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error('_byfly_submit_code error', jqXHR, textStatus, errorThrown);
+                cb(_byfly_parse_error(jqXHR));
+            }
+        });
+    }
+
+    /*
+    Error:
+    {
+        "username": [
+            "username \u0434\u043e\u043b\u0436\u0435\u043d \u0431\u044b\u0442\u044c \u043d\u0435 \u043c\u0435\u043d\u0435\u0435 7 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432."
+        ]
+    }
+    {
+        "password": [
+            "\u041f\u0440\u0435\u0434\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0443\u0447\u0435\u0442\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043d\u0435\u0432\u0435\u0440\u043d\u044b."
+        ]
+    }
+    */
+    // try to extract error message
+    function _byfly_parse_error(jqXHR) {
+        const msgStr = jqXHR.responseText;
+        let msg = '';
+        try {
+            const msgParsed = JSON.parse(msgStr);
+            msg = msgParsed.username || msgParsed.password || msgParsed.code;
+        } catch (jsonE) {
+            msg = msgStr || jqXHR.status || 'Unknown error';
+        }
+        return msg;
+    }
 </script>
 
 <script type="text/html" data-template-name="byfly-balance">
+    <style>
+        .tip {
+            font-size: 0.8em;
+            color: var(--red-ui-secondary-text-color);
+        }
+    </style>
+    <input type="hidden" id="node-input-token" placeholder="Token">
     <div class="form-row">
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-username"><i class="icon-tag"></i> Username</label>
+        <label for="node-input-username"><i class="icon-tag"></i> Phone number</label>
         <input type="text" id="node-input-username">
+        <div class="tip">phone format: 375XXYYYYYYY</div>
     </div>
     <div class="form-row">
         <label for="node-input-password"><i class="icon-tag"></i> Password</label>
         <input type="password" id="node-input-password">
     </div>
+
+    <div class="form-row">
+        <button class="ui-button ui-corner-all primary" id="byfly_request_code">
+            <span>Request SMS code</span>
+        </button>
+        <i id="byfly_request_code_progress" class="fa fa-spinner fa-spin"></i>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-code"><i class="icon-tag"></i> SMS Code</label>
+        <input type="text" id="node-input-code">
+    </div>
+
+    <div class="form-row">
+        <button class="ui-button ui-corner-all primary" id="byfly_submit_code">Submit SMS code</button>
+        <i id="byfly_submit_code_progress" class="fa fa-spinner fa-spin"></i>
+    </div>
+    <div class="form-row">
+        <button class="red-ui-button ui-corner-all primary" id="byfly_reset">Reset token</button>
+    </div>
 </script>
 
 <script type="text/html" data-help-name="byfly-balance">
-    <p>Node that fetch balance of ByFly account</p>
+    <p>Node that fetch balance of <a href="https://my.beltelecom.by/login" target="_blank">ByFly</a> account</p>
 
     <p>When input message is received, the request is performed. Actual message data is not used.</p>
-    
+    <p><strong style="color:var(--red-ui-text-color-warning)">NOTE</strong>: Due to API restrictions, the authentication
+        token is valid for 600 days. After that period, the user must reauthenticate.</p>
+
     <h3>Inputs</h3>
     <dl class="message-properties">
         <dt>payload

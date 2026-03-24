@@ -1,6 +1,6 @@
 {
   "name" : "node-red-contrib-byfly",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A Node-RED node to get ByFly account balance",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -13,8 +13,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "node-fetch": "^2.6.0",
-    "socket.io-client": "^2.3.0"
+    "node-fetch": "^2.6.0"
   },
 
   "node-red" : {
