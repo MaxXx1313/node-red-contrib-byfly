@@ -1,0 +1,63 @@
+[
+{
+    "id": "1fd3d8217de774d9",
+    "type": "tab",
+    "label": "Flow 1",
+    "disabled": false,
+    "info": "",
+    "env": []
+},
+{
+    "id": "c5be2e8302df32aa",
+    "type": "debug",
+    "z": "1fd3d8217de774d9",
+    "name": "debug 1",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 800,
+    "y": 320,
+    "wires": []
+},
+{
+    "id": "c2423f4975d81933",
+    "type": "inject",
+    "z": "1fd3d8217de774d9",
+    "name": "",
+    "props": [
+    {
+        "p": "payload"
+    },
+    {
+        "p": "topic",
+        "vt": "str"
+    }],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 360,
+    "y": 280,
+    "wires": [
+        ["879765d863440dcc"]
+    ]
+},
+{
+    "id": "879765d863440dcc",
+    "type": "byfly-balance",
+    "z": "1fd3d8217de774d9",
+    "name": "",
+    "x": 570,
+    "y": 320,
+    "wires": [
+        ["c5be2e8302df32aa"]
+    ]
+}]
