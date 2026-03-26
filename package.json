@@ -14,7 +14,7 @@
   "author": "MaxXx1313 <fomy.spam@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/maxxx1313/node-red-contrib-byfly.git"
+    "url": "git+https://github.com/maxxx1313/node-red-contrib-byfly.git"
   },
   "license": "MIT",
   "dependencies": {
